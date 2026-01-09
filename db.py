@@ -10,25 +10,28 @@ def init_db():
     Compatible con Streamlit Cloud.
     """
 
-    # Ruta absoluta dentro del contenedor de Streamlit Cloud
     csv_path = os.path.join("data", "superstore.csv")
 
     if not os.path.exists(csv_path):
         st.error(f"No se encontró el archivo CSV en: {csv_path}")
         st.stop()
 
-    # Intento de lectura con varios encodings
-    encodings = ["utf-8", "latin1", "utf-8-sig"]
-
-    for enc in encodings:
-        try:
-            df = pd.read_csv(csv_path, encoding=enc)
-            break
-        except UnicodeDecodeError:
-            continue
-    else:
-        st.error("No se pudo leer el CSV con ningún encoding conocido.")
+    # Lector robusto que ignora caracteres inválidos
+    try:
+        df = pd.read_csv(
+            csv_path,
+            encoding="latin1",
+            engine="python",
+            on_bad_lines="skip"   # ignora líneas corruptas
+        )
+    except Exception as e:
+        st.error(f"Error leyendo el CSV: {e}")
         st.stop()
+
+    # Limpieza de caracteres invisibles como 0xA0
+    df = df.applymap(
+        lambda x: x.replace("\xa0", " ") if isinstance(x, str) else x
+    )
 
     # Crear base de datos en memoria
     conn = sqlite3.connect(":memory:")
@@ -38,8 +41,5 @@ def init_db():
 
 
 def query(sql):
-    """
-    Ejecuta una consulta SQL sobre la base de datos en memoria.
-    """
     conn = init_db()
     return pd.read_sql(sql, conn)
