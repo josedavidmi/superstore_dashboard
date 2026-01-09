@@ -1,14 +1,14 @@
 import sqlite3
 import pandas as pd
+import streamlit as st
 
+@st.cache_resource
 def init_db(csv_path="data/superstore.csv"):
-    conn = sqlite3.connect("superstore.db")
+    conn = sqlite3.connect(":memory:")  # Base de datos en memoria
     df = pd.read_csv(csv_path)
     df.to_sql("ventas", conn, if_exists="replace", index=False)
-    conn.close()
+    return conn
 
 def query(sql):
-    conn = sqlite3.connect("superstore.db")
-    df = pd.read_sql(sql, conn)
-    conn.close()
-    return df
+    conn = init_db()
+    return pd.read_sql(sql, conn)
